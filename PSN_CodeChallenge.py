@@ -90,7 +90,7 @@ class UserContent:
     if n_items is None or n_items<0:
       # If n_items is None then all new terms should be returned, the
       # max n_terms is therefore the row number of the latest_item
-      n_items=s.row_num_from_id(s.latest_item)
+      n_items=s.number_of_terms()
     elif not isinstance(n_items, int):
       n_items=int(n_items)
     if n_items==0:
@@ -105,21 +105,31 @@ class UserContent:
       elif s.latest_item is None and not s.oldest_item is None:
         last_time=s.__content_time__(content.index[-1])
         first_time=s.__content_time__(s.oldest_item)
+        assbool=False
+        piv1=s.oldest_item
       elif s.oldest_item is None and not s.latest_item is None:
         last_time=s.__content_time__(s.latest_item)
         first_time=s.__content_time__(content.index[0])
+        assbool=True
+        piv1=s.latest_item
       else:
-        errmsg='both latest_item '+str(s.latest_item)+' and oldest_item '+str(soldest_item)
+        errmsg='both latest_item '+str(s.latest_item)+' and oldest_item '+str(s.oldest_item)
         errmsg+='are not None which should not occur as users either want new or old content.'
         raise TypeError(errmsg)
         last_time=s.__content_time__(s.latest_item)
-      for c in content.index:
-        t=s.__content_time__(c)
+      content['created']=pd.to_datetime(content['created'],format="%Y-%m-%d %H:%M:%S.%f")
+      content=content.sort_values(by='created',axis=0,ascending=assbool)
+      piv2=content.index[-1]
+      r1=content.index.get_loc(piv1)
+      r2=content.index.get_loc(piv2)
+      for c in range(r1,r2):
+        item_id=content.index[c]
+        t=s.__content_time__(item_id)
         if len(content_return)<n_items and first_time>=t>=last_time:
-          if content.loc[c][1]=='APPROVED' and all_terms==0:
-            content_return.append(c)
+          if content.loc[item_id][1]=='APPROVED' and all_terms==0:
+            content_return.append(item_id)
           elif all_terms==1:
-            content_return.append(c)
+            content_return.append(item_id)
           else: continue # Loop should not be ended but term is invalid so not returned.
         else: break
       return content.loc[content_return]

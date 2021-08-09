@@ -210,7 +210,7 @@ def shape_test(output_df,n_items):
   :rtype: bool
   :returns: True if shape is correct, False if not
   '''
-  if output_df.shape[0]==n_items and output_df.shape[1]==df_cols:
+  if output_df.shape[0]<=n_items and output_df.shape[1]==df_cols:
     return True
   else:
     errstr='shape test failed'
