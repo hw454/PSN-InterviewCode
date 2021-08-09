@@ -46,8 +46,14 @@ class UserContent:
   def __get_oldest_item__(s): return s.oldest_item
   def __get_latest_item__(s): return s.latest_item
   def __get_filename__(s): return s.filename
-  def __set_latest_item__(s,latest_item): s.latest_item=latest_item
-  def __set_oldest_item__(s,oldest_item): s.oldest_item=oldest_item
+  def __set_latest_item__(s,latest_item):
+    s.latest_item=latest_item
+    s.oldest_item=None
+    return
+  def __set_oldest_item__(s,oldest_item):
+    s.oldest_item=oldest_item
+    s.latest_item=None
+    return
   def __set_language__(s,language): s.language=language
   def __str__(s):
      content=s.__get_content_csv__()
@@ -93,15 +99,23 @@ class UserContent:
     else:
       content=s.__get_content_csv__()
       content_return=list()
-      if s.latest_item is None:
-        # since there is no lastest_item set the last_time to be the final content time.
+      if s.latest_item is None and s.oldest_item is None:
+        # since there is no lastest_item or oldest_item all approved content should be returned
+        return s.apprv_content()
+      elif s.latest_item is None and not s.oldest_item is None:
         last_time=s.__content_time__(content.index[-1])
+        first_time=s.__content_time__(s.oldest_item)
+      elif s.oldest_item is None and not s.latest_item is None:
+        last_time=s.__content_time__(s.latest_item)
+        first_time=s.__content_time__(content.index[0])
       else:
-        # When latest_item is definded the last_time is the time of this item. No older items should be returned.
+        errmsg='both latest_item '+str(s.latest_item)+' and oldest_item '+str(soldest_item)
+        errmsg+='are not None which should not occur as users either want new or old content.'
+        raise TypeError(errmsg)
         last_time=s.__content_time__(s.latest_item)
       for c in content.index:
         t=s.__content_time__(c)
-        if len(content_return)<n_items and t>=last_time:
+        if len(content_return)<n_items and first_time>=t>=last_time:
           if content.loc[c][1]=='APPROVED' and all_terms==0:
             content_return.append(c)
           elif all_terms==1:
