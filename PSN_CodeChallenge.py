@@ -241,9 +241,12 @@ class UserContent:
         item_id=content.index[c]
         usr_crt=content.loc[item_id]['uploader_user_id']
         if not isinstance(usr_crt,str):
-          priot=False
+          prior=False
+        elif len(usr_crt)<=1:
+          prior=False
         else:
           prior=usr_crt in usr_fol_list
+        #print(prior,usr_crt)
         if prior:
           content_return_pr,valid=s.item_valid(item_id,content_return_pr,times,langcheck,languages,all_terms)
         else:
@@ -251,13 +254,12 @@ class UserContent:
         if len(content_return_pr)>=n_items:
           break
       np=len(content_return_pr)
-      print(np,content_return[0:n_items-np]) #FIXME
+      print(np,'number of priority terms',content_return_pr) #FIXME
       content_return_pr+=content_return[0:n_items-np]
       if len(content_return_pr)==0:
         return(content.iloc[r1])
       else:
-        print(content_return_pr) #FIXME
-        return content[content_return_pr].copy()
+        return content.loc[content_return_pr]
   def apprv_content(s,all_terms=0):
     ''' Return a data_frame containing only the approved content'''
     content=s.__get_content_csv__()

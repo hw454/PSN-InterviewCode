@@ -230,10 +230,10 @@ def test13():
   n_items=random.randint(0,rand_lat_num)
   UC.latest_item=UC.id_from_row_num(rand_lat_num)
   output_df=UC.content_request(n_items)
-  if item_id in output_df.index[0]:
+  if item_id in output_df.index[0] or output_df.index[0] in item_id:
     return True
   else:
-    print(item_id,output_df.index)
+    print(item_id,output_df.index,output_df.index[0])
     print('Test failed for following priority')
     return False
 
