@@ -151,8 +151,7 @@ class UserContent:
     if not isinstance(s.__get_user_item__()['following'],str):
       return usr_fol_id
     fol_list=s.__get_user_item__()['following'].translate(str.maketrans('','',string.punctuation))
-    fol_list=fol_list.split()
-    return usr_fol_id
+    return fol_list
   def item_valid(s,item_id,content_return,times,langcheck,languages,all_terms):
     ''' Determine whether the item given by `item_id' is valid for the users requested content.
     :param item_id: string index for the item in the content dataframe
@@ -188,7 +187,6 @@ class UserContent:
           valid=False
           return content_return,valid
       if not 'APPROVED' in content.loc[item_id][1]:
-        print('item not approved',item_id, content.loc[item_id][1])
         valid=False
         return content_return,valid
     t=s.__content_time__(item_id)
@@ -215,7 +213,7 @@ class UserContent:
       n_items=s.number_of_terms()
     elif isinstance(n_items, (float,str)):
       n_items=int(n_items)
-    print(n_items)
+    print(n_items) #FIXME
     if n_items==0:
       print('No content requested')
       return
@@ -242,7 +240,10 @@ class UserContent:
       for c in range(r1,r2):
         item_id=content.index[c]
         usr_crt=content.loc[item_id]['uploader_user_id']
-        prior=usr_crt in usr_fol_list
+        if not isinstance(usr_crt,str):
+          priot=False
+        else:
+          prior=usr_crt in usr_fol_list
         if prior:
           content_return_pr,valid=s.item_valid(item_id,content_return_pr,times,langcheck,languages,all_terms)
         else:
@@ -250,12 +251,12 @@ class UserContent:
         if len(content_return_pr)>=n_items:
           break
       np=len(content_return_pr)
-      print(np,content_return[0:n_items-np])
+      print(np,content_return[0:n_items-np]) #FIXME
       content_return_pr+=content_return[0:n_items-np]
       if len(content_return_pr)==0:
         return(content.iloc[r1])
       else:
-        print(content_return_pr)
+        print(content_return_pr) #FIXME
         return content[content_return_pr].copy()
   def apprv_content(s,all_terms=0):
     ''' Return a data_frame containing only the approved content'''
@@ -263,7 +264,7 @@ class UserContent:
     content_return=list()
     langcheck,languages=s.usr_languages()
     times=[content['created'].min(skipna=True),content['created'].max(skipna=True)]
-    print('apprv',times)
+    print('apprv',times) #FIXME
     for c in content.index:
       content_return,valid=s.item_valid(c,content_return,times,langcheck,languages,all_terms)
     return content.loc[content_return]
