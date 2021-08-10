@@ -5,6 +5,8 @@ import datetime as dt
 import PSN_tests
 import re
 import random
+import string
+from datetime import date
 
 class UserContent:
   def __init__(s,usrs_filename='users',csv_filename='content',user_id=0,request_language='en',oldest_item=None,latest_item=None):
@@ -37,6 +39,8 @@ class UserContent:
     return content
   def __get_user_item__(s):
     users=pd.read_csv(s.users_filename,index_col=1)
+    if not s.usr_id in users.index:
+      raise KeyError('user_id is not in the dataframe of users')
     return users.loc[s.usr_id]
   def __getitem_with_row__(s,i):
     '''get the itemfor the 'ith' content term'''
@@ -72,7 +76,7 @@ class UserContent:
     content=s.__get_content_csv__()
     item=content.loc[item_id]
     datetime_str=item[4]
-    datetime_obj=dt.datetime.strptime(datetime_str,"%Y-%m-%d %H:%M:%S.%f")
+    datetime_obj=pd.to_datetime(datetime_str,format="%Y-%m-%d %H:%M:%S.%f")
     return datetime_obj
   def row_num_from_id(s,item_id):
     content=s.__get_content_csv__()
@@ -95,6 +99,7 @@ class UserContent:
     :rtype: string, timestamp, timestamp, bool
     :returns: piv1,last_time, first_time, assbool
     '''
+    content=s.__get_content_csv__()
     if not s.latest_item is None and not s.oldest_item is None:
       errmsg='both latest_item '+str(s.latest_item)+' and oldest_item '+str(s.oldest_item)
       errmsg+='are not None which should not occur as users either want new or old content.'
@@ -109,10 +114,16 @@ class UserContent:
       piv1=s.oldest_item
       return piv1,last_time,first_time,assbool
     elif s.oldest_item is None and not s.latest_item is None:
+      today=pd.Timestamp.today()
       last_time=s.__content_time__(s.latest_item)
-      first_time=s.__content_time__(content.index[0])
-      assbool=True
-      piv1=s.latest_item
+      first_time=today
+      if abs((today-last_time).days)>1:
+        # If the latest content is more than a day old then set now to be the start time and view the n_items getting older.
+        assbool=False
+        piv1=content.index[0]
+      else:
+        assbool=True
+        piv1=s.latest_item
       return piv1,last_time,first_time,assbool
     else:
       errmsg='the latest_item '+str(s.latest_item)+' and oldest_item '+str(s.oldest_item)
@@ -129,12 +140,19 @@ class UserContent:
       langcheck=False
       languages=list()
     else:
-      print(usr['settings'])
-      settings=re.sub(r"[\([{})\]]", "", usr['settings'])
-      settings=settings.split()
+      settings=usr['settings']
+      settings=settings.translate(str.maketrans('','',string.punctuation))
       languages=settings[1:]
       langcheck=True
     return langcheck, languages
+  def usr_followers(s):
+    ''' Get a list of the user_id's for the users this user follows.'''
+    usr_fol_id=list()
+    if not isinstance(s.__get_user_item__()['following'],str):
+      return usr_fol_id
+    fol_list=s.__get_user_item__()['following'].translate(str.maketrans('','',string.punctuation))
+    fol_list=fol_list.split()
+    return usr_fol_id
   def item_valid(s,item_id,content_return,times,langcheck,languages,all_terms):
     ''' Determine whether the item given by `item_id' is valid for the users requested content.
     :param item_id: string index for the item in the content dataframe
@@ -151,6 +169,7 @@ class UserContent:
     :rtype: list of strings, Bool
     :returns: content_return, valid
     '''
+    content=s.__get_content_csv__()
     valid=True # valid is initialised to True and is altered if any invalid conditions hold
     # When a False validity occurs the content_return id list and valid
     # are returned without the other checks as all need to be True for the item to be stored.
@@ -162,10 +181,14 @@ class UserContent:
     else:
       if langcheck:
         lang=content.loc[item_id]['language']
-        if not any(lang in l or l in lang for l in languages):
+        if lang is None:
           valid=False
           return content_return,valid
-      if not content.loc[item_id][1]=='APPROVED':
+        if not lang in languages:
+          valid=False
+          return content_return,valid
+      if not 'APPROVED' in content.loc[item_id][1]:
+        print('item not approved',item_id, content.loc[item_id][1])
         valid=False
         return content_return,valid
     t=s.__content_time__(item_id)
@@ -198,7 +221,8 @@ class UserContent:
       return
     else:
       content=s.__get_content_csv__()
-      content_return=list()
+      content_return   =list()
+      content_return_pr=list() # Priority list based on followers.
       # Use pivot_terms to determine whether newer or older content is being found.
       piv1,last_time,first_time,assbool=s.pivot_terms()
       times=[first_time,last_time]
@@ -210,24 +234,36 @@ class UserContent:
       content=content.sort_values(by='created',axis=0,ascending=assbool)
       piv2=content.index[-1]
       # Locate the pivot term for searching
-      r1,r2=content.index.get_loc(piv1,piv2)
+      r1=content.index.get_loc(piv1)
+      r2=content.index.get_loc(piv2)
       langcheck,languages=s.usr_languages()
       # iterate through the possible terms, stop once n_terms are reached or the terms run out.
+      usr_fol_list=s.usr_followers()
       for c in range(r1,r2):
         item_id=content.index[c]
-        content_return,valid=s.item_valid(item_id,content_return,times,langcheck,languages,all_terms)
-        if len(content_return)>=n_items:
+        usr_crt=content.loc[item_id]['uploader_user_id']
+        prior=usr_crt in usr_fol_list
+        if prior:
+          content_return_pr,valid=s.item_valid(item_id,content_return_pr,times,langcheck,languages,all_terms)
+        else:
+          content_return,valid=s.item_valid(item_id,content_return,times,langcheck,languages,all_terms)
+        if len(content_return_pr)>=n_items:
           break
-      if len(content_return)==0:
+      np=len(content_return_pr)
+      print(np,content_return[0:n_items-np])
+      content_return_pr+=content_return[0:n_items-np]
+      if len(content_return_pr)==0:
         return(content.iloc[r1])
       else:
-        return content.loc[content_return]
+        print(content_return_pr)
+        return content[content_return_pr].copy()
   def apprv_content(s,all_terms=0):
     ''' Return a data_frame containing only the approved content'''
     content=s.__get_content_csv__()
     content_return=list()
     langcheck,languages=s.usr_languages()
-    times=[content['created'].min(),content['created'].max()]
+    times=[content['created'].min(skipna=True),content['created'].max(skipna=True)]
+    print('apprv',times)
     for c in content.index:
       content_return,valid=s.item_valid(c,content_return,times,langcheck,languages,all_terms)
     return content.loc[content_return]
