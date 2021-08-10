@@ -36,6 +36,10 @@ class UserContent:
     s.language=request_language
   def __get_content_csv__(s):
     content=pd.read_csv(s.filename,index_col=1)
+    today=pd.Timestamp.today()
+    cimpossible=[c for c in content.index if pd.to_datetime(content.loc[c]['created'],format="%Y-%m-%d %H:%M:%S.%f")>today]
+    content=content.drop(cimpossible)
+    ct0=pd.to_datetime(content.loc[content.index[0]]['created'],format="%Y-%m-%d %H:%M:%S.%f")
     return content
   def __get_user_item__(s):
     users=pd.read_csv(s.users_filename,index_col=1)
@@ -44,7 +48,7 @@ class UserContent:
     return users.loc[s.usr_id]
   def __getitem_with_row__(s,i):
     '''get the itemfor the 'ith' content term'''
-    content=pd.read_csv(s.filename) # Returns a comma separated data frame from the CSV file.
+    content=s.__get_content_csv__() # Returns a comma separated data frame from the CSV file.
     return content.iloc[i]
   def __getitem_with_id__(s,item_id):
     ''' Return content row using item_id'''
@@ -190,6 +194,7 @@ class UserContent:
         valid=False
         return content_return,valid
     t=s.__content_time__(item_id)
+    print(type(times[0]),type(t))
     if not times[0]>=t>=times[1]:
       valid=False
       return content_return,valid
