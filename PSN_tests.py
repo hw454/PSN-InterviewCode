@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import PSN_CodeChallenge
 import pandas as pd
 import random
@@ -16,6 +18,9 @@ test9:  latest_item=None
 test10: Return only the Approved content
 test11: Detect if oldest_item and latest_item are both set
 test12: For random "oldest_item"
+test13: Check that followed user item comes before others.
+test14: Check that no content which should have been returned has been missed.
+test15: Check that the language filter is testing True correctly.
 shape_test: Using n_items and the shape of the original data_frame check the shape of the content_request output is valid
 appr_test:  Check all content is approved from content_request outputs (unless requested otherwise)
 '''
@@ -203,6 +208,76 @@ def test12b(UC):
       return False
   return True
 
+def test13a():
+  '''Test that a usr id is found in a following list'''
+  content=pd.read_csv('content.csv',index_col=1)
+  user_id='XzrUzWeqEsYgVazU40z3aQTugfo2'
+  item_id='6006e9a9ef26370018b0001b'
+  usr_crt=content.loc[item_id]['uploader_user_id']
+  UC=PSN_CodeChallenge.UserContent(user_id=user_id)
+  usr_fol_list=UC.usr_followers()
+  prior=usr_crt in usr_fol_list
+  if prior:  return True
+  else: return False
+
+def test13():
+  ''' Randomly choose the latest term then check all new items are returned '''
+  user_id='XzrUzWeqEsYgVazU40z3aQTugfo2'
+  item_id='6006e9a9ef26370018b0001b'
+  UC=PSN_CodeChallenge.UserContent(user_id=user_id)
+  maxn_items=UC.number_of_terms()-1
+  rand_lat_num=random.randint(0,maxn_items)
+  n_items=random.randint(0,rand_lat_num)
+  UC.latest_item=UC.id_from_row_num(rand_lat_num)
+  output_df=UC.content_request(n_items)
+  if item_id in output_df.index[0]:
+    return True
+  else:
+    print(item_id,output_df.index)
+    print('Test failed for following priority')
+    return False
+
+def test14():
+  ''' Test whether any content in a time interval has been missed.
+  This user_id is chosen to be a user following no one with no languages set.
+  Therefore the only validy checks are on whether content is approved and
+  if it occurs earlier than the latest_item.'''
+  user_id='E9JLrDjjkRVMXxZgifCaklUdkjl1'
+  UC=PSN_CodeChallenge.UserContent(user_id=user_id)
+  content=pd.read_csv('content.csv',index_col=1)
+  maxn_items=UC.number_of_terms()-1
+  rand_lat_num=random.randint(0,maxn_items)
+  last_time=pd.to_datetime(content.iloc[rand_lat_num]['created'],format="%Y-%m-%d %H:%M:%S.%f")
+  latest_item=content.index[rand_lat_num]
+  n_items=random.randint(0,rand_lat_num)
+  UC.latest_item=latest_item
+  output_df=UC.content_request(n_items)
+  first_time=output_df['created'].max()
+  apprv_content=UC.apprv_content()
+  betweencheck=apprv_content['created'].between_time(first_time,last_time)
+  if len(betweencheck)>1:
+    print('Test failed for between time check.')
+    return False
+
+def  test15():
+  '''Check that a known valid language file is being picked up for language check.'''
+  user_id='6xrOHj0UG9R0Zb06MYUxQ2F7cqv2' # User with language settings but no following
+  item_id='6011561e06640000183c1b13' # content in a valid language
+  UC=PSN_CodeChallenge.UserContent(user_id=user_id)
+  maxn_items=UC.number_of_terms()-1
+  rand_lat_num=random.randint(0,maxn_items)
+  n_items=random.randint(0,rand_lat_num)
+  UC.latest_item=UC.id_from_row_num(rand_lat_num)
+  output_df=UC.content_request(n_items)
+  if item_id in output_df.index:
+    return True
+  else:
+    print(item_id,output_df.index)
+    print('Test failed for checking language is picked up.')
+    return False
+
+
+
 def shape_test(output_df,n_items):
   ''' test that the output data_frame has the correct shape
   :param output_df: the data_frame being tested
@@ -272,6 +347,12 @@ def tests(UC):
     return False
   if not test12b(UC):
     return False
+  if not test13():
+    return False
+  if not test14():
+    return False
+  if not test15():
+    return False
   print('All tests passed')
   return True
 
@@ -281,7 +362,7 @@ if __name__=='__main__':
   r=random.randint(0,N)
   user_id=users.index[r]
   UC=PSN_CodeChallenge.UserContent(user_id=user_id)
-  test7(UC)
+  test13()
   exit()
 
 
