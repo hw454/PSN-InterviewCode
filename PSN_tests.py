@@ -111,8 +111,9 @@ def test6(UC):
 
 def test7(UC):
   ''' The requested n_items is a float type variable. '''
-  n_items=random.rand(0,UC.number_of_terms(),0.25)
+  n_items=random.random()*UC.number_of_terms()
   test7out=UC.content_request(n_items)
+  print(test7out.shape)
   if  appr_test(test7out) and shape_test(test7out,int(n_items)):
     return True
   else:
@@ -210,7 +211,9 @@ def shape_test(output_df,n_items):
   :rtype: bool
   :returns: True if shape is correct, False if not
   '''
-  if output_df.shape[0]<=n_items and output_df.shape[1]==df_cols:
+  if len(output_df.shape)<=1 and output_df.shape[0]==df_cols:
+    return True
+  elif output_df.shape[0]<=n_items and output_df.shape[1]==df_cols:
     return True
   else:
     errstr='shape test failed'
@@ -226,6 +229,11 @@ def appr_test(output_df):
   '''
   if output_df.shape[0]==0:
     return True
+  elif len(output_df.shape)<=1:
+    if any(term=='APPROVED' for term in output_df):
+      return True
+    else:
+      return False
   for ind in output_df.index:
     if any(term=='APPROVED' for term in output_df.loc[ind]):
       continue
@@ -268,8 +276,12 @@ def tests(UC):
   return True
 
 if __name__=='__main__':
-  UC=PSN_CodeChallenge.UserContent()
-  tests(UC)
+  users=pd.read_csv('users.csv',index_col=1)
+  N=len(users.index)
+  r=random.randint(0,N)
+  user_id=users.index[r]
+  UC=PSN_CodeChallenge.UserContent(user_id=user_id)
+  test7(UC)
   exit()
 
 
