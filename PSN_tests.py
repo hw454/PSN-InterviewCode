@@ -276,16 +276,18 @@ def test14():
   rand_lat_num=random.randint(0,maxn_items)
   last_time=pd.to_datetime(content.iloc[rand_lat_num]['created'],format="%Y-%m-%d %H:%M:%S.%f")
   latest_item=content.index[rand_lat_num]
-  n_items=random.randint(0,20)
+  n_items=random.randint(10,20)
   UC.latest_item=latest_item
   output_df=UC.content_request(n_items)
   first_time=pd.to_datetime(output_df['created'].max(),format="%Y-%m-%d %H:%M:%S.%f")
   content['created']=pd.to_datetime(content['created'],format="%Y-%m-%d %H:%M:%S.%f")
-  betweencheck=content['created'].between_time(first_time,last_time)
-  print(betweencheck,betweencheck['status'].value_counts())
-  #if len(betweencheck)>1:
-  #  print('Test failed for between time check.')
-  #  return False
+  times=[content['created'].min()-pd.Timedelta(days=1),content['created'].max()+pd.Timedelta(days=1)]
+  for ind in output_df.index:
+     t=pd.to_datetime(content['created'][ind],format="%Y-%m-%d %H:%M:%S.%f")
+     test=first_time<=t<=last_time
+     valid=UC.item_valid(ind,list(),times,0,list(),0)
+     if test and valid:
+       return False
   return True
 
 def  test15():

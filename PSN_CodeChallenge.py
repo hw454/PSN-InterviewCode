@@ -8,6 +8,9 @@ import random
 import string
 from datetime import date
 
+'''The module PSN_CodeChallenge creates the class object `UserContent'. This
+object retireves required content for a user'''
+
 class UserContent:
   def __init__(s,usrs_filename='users',csv_filename='content',user_id=0,request_language='en',oldest_item=None,latest_item=None):
     '''
@@ -273,9 +276,7 @@ class UserContent:
         if len(content_return_pr)>=n_items:
           break
       np=len(content_return_pr)
-      #DEBUGGING
-      print('number of priority terms',np)
-      #END DEBUGGING PRINT
+      #DEBUGGING print('number of priority terms',np)
       content_return_pr+=content_return[0:n_items-np]
       if len(content_return_pr)==0:
         return s.content.iloc[r1]
@@ -302,7 +303,7 @@ class UserContent:
       else:
         content_return,valid=s.item_valid(item_id,content_return,times,langcheck,languages,all_terms)
     np=len(content_return_pr)
-    print('apprv-number of priority terms',np)
+    #DEBUGGING print('apprv-number of priority terms',np)
     content_return_pr+=content_return
     if len(content_return_pr)==0:
       return s.content.iloc[0]
